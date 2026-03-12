@@ -1,337 +1,264 @@
-# 🏦 Loan Default Prediction - End-to-End MLOps Project
+# Loan Default Prediction System
 
-A production-ready machine learning project for predicting loan defaults using the "Give Me Some Credit" dataset from Kaggle.
+Predicts whether a borrower will experience serious financial distress within 2 years, using the **Give Me Some Credit** dataset from Kaggle.
 
-## 📊 Project Overview
+The model is trained in a Jupyter notebook (locally or on Google Colab), then served through **FastAPI** (REST API) and **Streamlit** (web dashboard). Optionally deployable via **Docker**.
 
-This project implements a complete MLOps pipeline including:
-- **Data Versioning**: DVC for data and pipeline management
-- **Experiment Tracking**: MLflow for model versioning and metrics
-- **API Development**: FastAPI for high-performance REST endpoints
-- **Frontend**: Streamlit for interactive predictions
-- **Containerization**: Docker for consistent deployments
-- **Cloud Deployment**: AWS EKS (planned for later phase)
+## Architecture
 
-## 🎯 Dataset
+```
+┌────────────────┐      HTTP       ┌────────────────┐
+│   Streamlit    │ ──────────────► │    FastAPI     │
+│   (Frontend)   │ ◄────────────── │    (Backend)   │
+│  localhost:8501│                 │  localhost:8000│
+└────────────────┘                 └───────┬────────┘
+                                           │
+                                    loads model.pkl
+                                    reads metrics.json
+                                           │
+                                   ┌───────┴────────┐
+                                   │  models/       │
+                                   │   model.pkl    │
+                                   │  metrics.json  │
+                                   └────────────────┘
+```
 
-**Source**: [Kaggle - Give Me Some Credit](https://www.kaggle.com/c/GiveMeSomeCredit)
+**Workflow:** Train in notebook → get `model.pkl` + `metrics.json` → serve with FastAPI → visualize with Streamlit
 
-- **Size**: 250,000 borrower records
-- **Target**: Predict serious financial distress in next 2 years
-- **Features**: 10 features including age, income, debt ratio, credit history
+## Project Structure
 
-## 🚀 Quick Start
+```
+Loan Approval Prediction System/
+├── backend/
+│   ├── __init__.py
+│   ├── main.py                     # FastAPI app (7 endpoints)
+│   └── model/
+│       ├── __init__.py
+│       └── predict.py              # Inference, feature engineering, SHAP
+│
+├── frontend/
+│   ├── __init__.py
+│   └── streamlit_app.py            # Streamlit dashboard
+│
+├── notebooks/
+│   └── 01_model_development.ipynb  # EDA, training, model export
+│
+├── data/
+│   └── raw/                        # Place cs-training.csv here
+│
+├── models/                         # model.pkl goes here (generated)
+│
+├── metrics.json                    # Training metrics (generated)
+├── requirements.txt
+├── Dockerfile                      # Multi-stage (api + frontend)
+├── docker-compose.yml              # Two-container setup
+├── .dockerignore
+├── .env.example
+├── .gitignore
+├── setup.bat                       # Windows: create venv + install deps
+└── start_services.bat              # Windows: launch FastAPI + Streamlit
+```
+
+## Dataset
+
+**Source:** [Kaggle — Give Me Some Credit](https://www.kaggle.com/c/GiveMeSomeCredit)
+
+- 250,000 borrower records
+- Target: `SeriousDlqin2yrs` (1 = default, 0 = no default)
+- 10 input features (age, income, debt ratio, credit lines, payment history, etc.)
+
+## Quick Start
 
 ### Prerequisites
 
-```bash
-Python 3.10+
-Git
-Docker (optional)
-Kaggle API credentials
-```
+- Python 3.10+
+- Kaggle account (to download the dataset)
 
-### Installation
+### Step 1 — Train the model
 
-1. **Clone the repository**
-```bash
-cd "C:\Users\sayan\AI ML\loan-default-prediction"
-```
+**Option A: Google Colab (no local Python needed)**
 
-2. **Create virtual environment**
+1. Upload `notebooks/01_model_development.ipynb` to [Google Colab](https://colab.research.google.com/)
+2. Upload `cs-training.csv` (from Kaggle) to Colab's file browser
+3. Run all cells top to bottom
+4. Download these two files from Colab and place them in the project:
+   - `model.pkl` → `models/model.pkl`
+   - `metrics.json` → project root
+
+**Option B: Local Jupyter**
+
 ```bash
+# Create virtual environment and install dependencies
+setup.bat          # Windows
+# Or manually:
 python -m venv venv
-venv\Scripts\activate  # Windows
-```
-
-3. **Install dependencies**
-```bash
+venv\Scripts\activate        # Windows
+# source venv/bin/activate   # Linux/Mac
 pip install -r requirements.txt
-```
 
-4. **Initialize DVC**
-```bash
-dvc init
-git init
-```
-
-5. **Download dataset from Kaggle**
-```bash
-# Install kaggle CLI
-pip install kaggle
-
-# Download dataset
-kaggle competitions download -c GiveMeSomeCredit
-
-# Extract to data/raw/
-unzip GiveMeSomeCredit.zip -d data/raw/
-```
-
-## 📂 Project Structure
-
-```
-loan-default-prediction/
-│
-├── data/
-│   ├── raw/                          # Original dataset (DVC tracked)
-│   └── processed/                    # Processed data (DVC tracked)
-│
-├── notebooks/
-│   └── 01_model_development.ipynb    # EDA & Model experimentation
-│
-├── src/
-│   ├── data_pipeline/
-│   │   ├── __init__.py
-│   │   ├── preprocess.py             # Data preprocessing
-│   │   └── feature_engineering.py    # Feature creation
-│   │
-│   ├── model/
-│   │   ├── __init__.py
-│   │   ├── train.py                  # Model training with MLflow
-│   │   └── predict.py                # Prediction logic
-│   │
-│   ├── api/
-│   │   ├── __init__.py
-│   │   └── main.py                   # FastAPI application
-│   │
-│   └── frontend/
-│       └── streamlit_app.py          # Streamlit UI
-│
-├── models/                            # Saved models
-├── mlruns/                            # MLflow tracking data
-├── tests/                             # Unit tests
-│
-├── dvc.yaml                           # DVC pipeline definition
-├── params.yaml                        # Hyperparameters
-├── requirements.txt                   # Python dependencies
-├── Dockerfile                         # Docker configuration
-├── docker-compose.yml                 # Multi-container setup
-├── .env.example                       # Environment variables template
-├── .gitignore
-├── .dvcignore
-└── README.md
-```
-
-## 🔬 Usage
-
-### 1. Exploratory Data Analysis (Notebook)
-
-```bash
+# Place cs-training.csv in data/raw/, then:
 jupyter notebook notebooks/01_model_development.ipynb
 ```
 
-- Perform EDA
-- Try multiple models
-- Track experiments with MLflow
-- Select best model
+Run all cells. The notebook saves `models/model.pkl` and `metrics.json` automatically.
 
-### 2. Run DVC Pipeline
+### Step 2 — Verify generated files
 
-```bash
-# Run entire pipeline (preprocess → train)
-dvc repro
+Before starting the app, confirm:
 
-# Or run specific stages
-dvc repro preprocess
-dvc repro train
+```
+models/model.pkl       ← trained XGBoost model
+metrics.json           ← training metrics (AUC, precision, recall, etc.)
 ```
 
-### 3. Start MLflow UI
+- Without `model.pkl` the API starts but returns **503** on prediction endpoints.
+- Without `metrics.json` the Model Info page shows "metrics unavailable" (not fatal).
+
+### Step 3 — Run the app
 
 ```bash
-mlflow ui
-# Visit: http://localhost:5000
+# Activate virtual environment
+venv\Scripts\activate
+
+# Terminal 1 — FastAPI
+uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+
+# Terminal 2 — Streamlit
+streamlit run frontend/streamlit_app.py
 ```
 
-### 4. Run FastAPI Backend
-
+Or on Windows:
 ```bash
-uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
-# API Docs: http://localhost:8000/docs
+start_services.bat
 ```
 
-### 5. Run Streamlit Frontend
+| Service | URL |
+|---------|-----|
+| Streamlit dashboard | http://localhost:8501 |
+| FastAPI Swagger docs | http://localhost:8000/docs |
+| API health check | http://localhost:8000/health |
+
+## What the notebook does
+
+`notebooks/01_model_development.ipynb` runs the full ML pipeline:
+
+1. **EDA** — target distribution, correlations, missing values
+2. **Preprocessing** — median imputation, outlier capping
+3. **Feature engineering** — creates 8 derived features:
+   - `DebtToIncomeRatio`, `CreditUtilization_Category`, `AgeGroup`
+   - `TotalPastDue`, `HasPastDue`, `IncomePerDependent`
+   - `LogMonthlyIncome`, `LoansPerCreditLine`
+4. **SMOTE** — balances the 93:7 class imbalance
+5. **Training** — compares Logistic Regression, Random Forest, XGBoost, LightGBM
+6. **Evaluation** — ROC-AUC, precision, recall, F1, confusion matrix, ROC curve
+7. **Export** — saves `model.pkl` and `metrics.json`
+
+MLflow experiment tracking is included but optional — the notebook works with or without an MLflow server running.
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/` | Basic health check |
+| GET | `/health` | Detailed health (model loaded status) |
+| POST | `/predict` | Single loan prediction |
+| POST | `/batch_predict` | Batch prediction via CSV upload |
+| GET | `/model_info` | Model metadata + training metrics |
+| GET | `/metrics` | Raw metrics from metrics.json |
+| POST | `/explain` | SHAP feature contributions for one input |
+
+### Example request
 
 ```bash
-streamlit run src/frontend/streamlit_app.py
-# Visit: http://localhost:8501
+curl -X POST http://localhost:8000/predict \
+  -H "Content-Type: application/json" \
+  -d '{
+    "RevolvingUtilizationOfUnsecuredLines": 0.766127,
+    "age": 45,
+    "NumberOfTime30-59DaysPastDueNotWorse": 2,
+    "DebtRatio": 0.802982,
+    "MonthlyIncome": 9120,
+    "NumberOfOpenCreditLinesAndLoans": 13,
+    "NumberOfTimes90DaysLate": 0,
+    "NumberRealEstateLoansOrLines": 6,
+    "NumberOfTime60-89DaysPastDueNotWorse": 0,
+    "NumberOfDependents": 2
+  }'
 ```
 
-### 6. Docker Deployment
+## Streamlit Dashboard Pages
+
+| Page | What it shows |
+|------|--------------|
+| Home | Overview, quick stats, how-it-works |
+| Single Prediction | Input form → prediction + probability gauge + SHAP bar chart |
+| Batch Prediction | CSV upload → summary stats + pie/bar charts + downloadable results |
+| Model Info | Model type, feature count, real training metrics, confusion matrix |
+
+## Docker Deployment
+
+Docker packages the API and frontend into two containers.
+
+### How it works
+
+The `Dockerfile` is a multi-stage build with two targets:
+
+| Stage | Runs | Port |
+|-------|------|------|
+| `api` | FastAPI + Uvicorn | 8000 |
+| `frontend` | Streamlit | 8501 |
+
+`docker-compose.yml` connects them on an internal Docker network (`loan-network`). The frontend container has `API_URL=http://api:8000` set as an environment variable, so Streamlit calls FastAPI using Docker's internal DNS — `api` resolves to the API container's IP address.
+
+The api container **mounts** `./models` and `./metrics.json` from your host, so you can update the model without rebuilding the image.
+
+### Run with Docker
 
 ```bash
-# Build and run all services
+# Prerequisites: model.pkl must exist in models/
+# and metrics.json must exist in project root
+
+# Build and start
 docker-compose up --build
 
-# Services:
-# - FastAPI: http://localhost:8000
-# - Streamlit: http://localhost:8501
-# - MLflow: http://localhost:5000
-```
+# Or detached (background)
+docker-compose up --build -d
 
-## 🔧 API Endpoints
-
-### Health Check
-```bash
-GET /
-```
-
-### Single Prediction
-```bash
-POST /predict
-Content-Type: application/json
-
-{
-  "RevolvingUtilizationOfUnsecuredLines": 0.766127,
-  "age": 45,
-  "NumberOfTime30-59DaysPastDueNotWorse": 2,
-  "DebtRatio": 0.802982,
-  "MonthlyIncome": 9120,
-  "NumberOfOpenCreditLinesAndLoans": 13,
-  "NumberOfTimes90DaysLate": 0,
-  "NumberRealEstateLoansOrLines": 6,
-  "NumberOfTime60-89DaysPastDueNotWorse": 0,
-  "NumberOfDependents": 2
-}
-```
-
-### Batch Prediction
-```bash
-POST /batch_predict
-Content-Type: multipart/form-data
-
-file: <CSV file>
-```
-
-## 📊 Model Performance
-
-| Model | AUC-ROC | Precision | Recall | F1-Score |
-|-------|---------|-----------|--------|----------|
-| XGBoost | 0.86 | 0.82 | 0.78 | 0.80 |
-| Random Forest | 0.84 | 0.80 | 0.76 | 0.78 |
-| Logistic Regression | 0.79 | 0.75 | 0.72 | 0.73 |
-
-## 🧪 Testing
-
-```bash
-# Run all tests
-pytest tests/
-
-# Run with coverage
-pytest --cov=src tests/
-```
-
-## 📈 MLflow Tracking
-
-Track experiments, compare models, and manage model lifecycle:
-
-```python
-import mlflow
-
-# Set experiment
-mlflow.set_experiment("loan-default-prediction")
-
-# Log parameters
-mlflow.log_param("n_estimators", 100)
-
-# Log metrics
-mlflow.log_metric("auc_roc", 0.86)
-
-# Log model
-mlflow.sklearn.log_model(model, "model")
-```
-
-## 🔄 DVC Pipeline
-
-The pipeline consists of 3 stages:
-
-1. **Preprocess**: Clean data, handle missing values
-2. **Feature Engineering**: Create new features
-3. **Train**: Train model with MLflow tracking
-
-```bash
-# View pipeline
-dvc dag
-
-# Run pipeline
-dvc repro
-
-# Check metrics
-dvc metrics show
-```
-
-## 🐳 Docker Commands
-
-```bash
-# Build images
-docker-compose build
-
-# Start all services
-docker-compose up -d
+# Check status
+docker-compose ps
 
 # View logs
-docker-compose logs -f
+docker-compose logs api
+docker-compose logs frontend
 
-# Stop services
+# Stop
 docker-compose down
-
-# Rebuild specific service
-docker-compose up --build api
 ```
 
-## 🌐 Future Enhancements
+Open http://localhost:8501 for the dashboard, http://localhost:8000/docs for the API.
 
-- [ ] AWS EKS deployment
-- [ ] CI/CD with GitHub Actions / AWS CodePipeline
-- [ ] Kubernetes manifests
-- [ ] Model monitoring with Prometheus/Grafana
-- [ ] A/B testing framework
-- [ ] Feature store integration
-- [ ] Advanced feature engineering (Deep Feature Synthesis)
+### Docker troubleshooting
 
-## 📝 Environment Variables
+| Problem | Fix |
+|---------|-----|
+| API returns 503 on `/predict` | `model.pkl` missing — run the notebook first |
+| Model Info shows "metrics unavailable" | `metrics.json` missing — run the notebook first |
+| Frontend shows "API Offline" | API container still starting — wait a few seconds, check `docker-compose logs api` |
+| Build fails on `COPY models/` | Run `mkdir models` (the directory must exist even if empty) |
 
-Create `.env` file from `.env.example`:
+## Tech Stack
 
-```bash
-# MLflow
-MLFLOW_TRACKING_URI=http://localhost:5000
+| Category | Technology |
+|----------|-----------|
+| ML | XGBoost, Scikit-learn, LightGBM |
+| Explainability | SHAP (TreeExplainer) |
+| API | FastAPI, Pydantic, Uvicorn |
+| Frontend | Streamlit, Plotly |
+| Containerization | Docker, Docker Compose |
+| Data | Pandas, NumPy |
+| Class Balancing | SMOTE (imbalanced-learn) |
+| Experiment Tracking | MLflow (optional) |
 
-# AWS (for later)
-AWS_ACCESS_KEY_ID=your_key
-AWS_SECRET_ACCESS_KEY=your_secret
-AWS_REGION=us-east-1
+## License
 
-# Model
-MODEL_PATH=models/model.pkl
-```
-
-## 🤝 Contributing
-
-Contributions are welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch
-3. Commit changes
-4. Push to branch
-5. Open a Pull Request
-
-## 📄 License
-
-MIT License
-
-## 👤 Author
-
-**Your Name**
-- GitHub: [@yourusername](https://github.com/yourusername)
-- LinkedIn: [Your Profile](https://linkedin.com/in/yourprofile)
-
-## 🙏 Acknowledgments
-
-- Kaggle for the dataset
-- MLflow and DVC communities
-- FastAPI and Streamlit teams
-
----
-
-**⭐ Star this repo if you find it helpful!**
+MIT

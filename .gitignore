@@ -7,7 +7,7 @@ __pycache__/
 venv/
 env/
 ENV/
-.venv
+.venv/
 
 # Jupyter Notebook
 .ipynb_checkpoints
@@ -19,12 +19,14 @@ mlartifacts/
 
 # Data files
 /data/raw/*.csv
-/data/processed/*.csv
 
 # Models
 models/*.pkl
 models/*.joblib
 models/*.h5
+
+# Generated metrics
+metrics.json
 
 # IDE
 .vscode/

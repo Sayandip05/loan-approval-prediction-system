@@ -1,1 +1,1 @@
-# Frontend package for Loan Default Prediction
+# Frontend package for Loan Approval Prediction System

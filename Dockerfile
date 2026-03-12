@@ -1,7 +1,7 @@
-# Multi-stage Dockerfile for Loan Default Prediction
+# Multi-stage Dockerfile for Loan Approval Prediction System
 
 # Base image with Python
-FROM python:3.10-slim as base
+FROM python:3.10-slim AS base
 
 # Set working directory
 WORKDIR /app
@@ -10,56 +10,50 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
-    git \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements
+# Copy requirements first (for Docker layer caching)
 COPY requirements.txt .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install only runtime dependencies (skip notebook-only packages)
+RUN pip install --no-cache-dir \
+    fastapi==0.109.0 \
+    uvicorn==0.27.0 \
+    python-multipart==0.0.6 \
+    pydantic==2.5.3 \
+    requests==2.31.0 \
+    pandas==2.1.4 \
+    numpy==1.26.3 \
+    scikit-learn==1.3.2 \
+    xgboost==2.0.3 \
+    joblib==1.3.2 \
+    shap==0.44.1 \
+    streamlit==1.29.0 \
+    plotly==5.18.0
 
 # Copy application code
-COPY . .
+COPY backend/ ./backend/
+COPY frontend/ ./frontend/
+
+# Create models directory (model.pkl is mounted at runtime via docker-compose)
+RUN mkdir -p ./models
 
 # ----------------- API Stage -----------------
-FROM base as api
+FROM base AS api
 
-# Expose API port
 EXPOSE 8000
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Run FastAPI
 CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 # ----------------- Frontend Stage -----------------
-FROM base as frontend
+FROM base AS frontend
 
-# Expose Streamlit port
 EXPOSE 8501
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8501/_stcore/health || exit 1
 
-# Run Streamlit
 CMD ["streamlit", "run", "frontend/streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]
-
-# ----------------- MLflow Stage -----------------
-FROM base as mlflow
-
-# Expose MLflow port
-EXPOSE 5000
-
-# Create MLflow directory
-RUN mkdir -p /app/mlruns /app/mlartifacts
-
-# Run MLflow server
-CMD ["mlflow", "server", \
-    "--backend-store-uri", "sqlite:///mlflow.db", \
-    "--default-artifact-root", "/app/mlartifacts", \
-    "--host", "0.0.0.0", \
-    "--port", "5000"]

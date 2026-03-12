@@ -1,11 +1,11 @@
 @echo off
 REM ========================================
-REM Loan Default Prediction - Setup Script
+REM Loan Approval Prediction System - Setup Script
 REM ========================================
 
 echo.
 echo ========================================
-echo  Loan Default Prediction - Setup
+echo  Loan Approval Prediction System - Setup
 echo ========================================
 echo.
 
@@ -39,9 +39,9 @@ echo    https://www.kaggle.com/c/GiveMeSomeCredit/data
 echo.
 echo 2. Place cs-training.csv in: data\raw\
 echo.
-echo 3. Run: python backend\data_pipeline\preprocess.py
-echo    Then: python backend\data_pipeline\feature_engineering.py
-echo    Then: python backend\model\train.py
+echo 3. Open the notebook to train the model:
+echo    jupyter notebook notebooks\01_model_development.ipynb
+echo    (Run all cells - model saves to models\model.pkl)
 echo.
 echo 4. Start services: start_services.bat
 echo.
